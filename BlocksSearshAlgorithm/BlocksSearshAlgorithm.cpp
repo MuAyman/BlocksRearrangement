@@ -85,7 +85,7 @@ vector<StateSpace> getNextStates(const StateSpace& current, const State& goal) {
 	vector<StateSpace> nextStates;
 	for (int i = 0; i < current.state.size(); ++i) {
 		if (!current.state[i].empty()) {  // current stack not empty
-			if (current.state[i].back() != '-') {  // skipping the marked done
+			//if (current.state[i].back() != '-') {  // skipping the marked done
 				char topBlock = current.state[i].back();
 				for (int j = 0; j < current.state.size(); ++j) {
 					if (i != j) {  // here we are moving the block from i to j
@@ -129,7 +129,7 @@ vector<StateSpace> getNextStates(const StateSpace& current, const State& goal) {
 					int newHeuristic = calculateHeuristic(newState, goal);
 					nextStates.push_back({ newState, newPath, newFixedCount, newHeuristic });
 				}
-			}
+			//}
 		}
 	}
 	return nextStates;
@@ -137,8 +137,10 @@ vector<StateSpace> getNextStates(const StateSpace& current, const State& goal) {
 
 // Function to fix all the elements that reach their goal pos and update state's fixedCount attribute
 void fixMatches(StateSpace& current, const StateSpace& goal) {
+
+	State inner = current.state;
 	// check if any of the tables (elements on table) are in the right place
-	for (auto& curStack : current.state)	// without const as we are overriding the DONE elements
+	for (auto& curStack : inner)	// without const as we are overriding the DONE elements
 		if (!curStack.empty())
 			for (const auto& goalStack : goal.state)
 				if (curStack.front() == goalStack.front())
@@ -149,11 +151,12 @@ void fixMatches(StateSpace& current, const StateSpace& goal) {
 					while (curStack[counter] == '-' && counter < curStack.size() - 1)	// extend the checking to the elements above
 					{
 						++counter;
-						if (curStack[counter] == goalStack[counter])
-						{
-							curStack[counter] = '-';	// mark done
-							++current.fixedCount;
-						}
+						if (counter < goalStack.size())
+							if (curStack[counter] == goalStack[counter])
+							{
+								curStack[counter] = '-';	// mark done
+								++current.fixedCount;
+							}
 					}
 				}
 }
@@ -161,7 +164,7 @@ void fixMatches(StateSpace& current, const StateSpace& goal) {
 // BFS algorithm to find the optimal path to reach the goal state
 Moves BFS_Algorithm(const StateSpace& start, const StateSpace& goal) {
 	//Moves path;
-	priority_queue<StateSpace> BFSq;
+	queue<StateSpace> BFSq;
 	unordered_set<string> visited;
 
 	BFSq.push(start);
@@ -170,7 +173,7 @@ Moves BFS_Algorithm(const StateSpace& start, const StateSpace& goal) {
 	//static int maxFixedCount = 0;	// to store the nearest to goal we reached and disregard the others
 	int count = 0, count2 = 0;
 	while (!BFSq.empty()) {
-		StateSpace current = BFSq.top();
+		StateSpace current = BFSq.front();
 		//path = BFSq.top().move;
 		BFSq.pop();
 
@@ -179,10 +182,10 @@ Moves BFS_Algorithm(const StateSpace& start, const StateSpace& goal) {
 
 		++count; count2 = 0;
 		cout << "\n visited " << count << " : " << toString(current.state);
-		for (auto stack : current.state)
-			for (auto block : stack)
-				(block == '-') ? ++count2 : count2;
-		cout << "\t\t fixed: " << count2;
+		//for (auto stack : current.state)
+		//	for (auto block : stack)
+				//(block == '-') ? ++count2 : count2;
+		cout << "\t\t fixed: " << current.fixedCount;
 
 
 		string currentString = toString(current.state);
@@ -205,14 +208,14 @@ Moves BFS_Algorithm(const StateSpace& start, const StateSpace& goal) {
 
 int main() {
 
-	//State input = { {'C', 'B', 'D'},{'A'} };
-	//State goal = { {'D', 'C', 'B', 'A'} };
+	State input = { {'C', 'B', 'D'},{'A'} };
+	State goal = { {'D', 'C', 'B', 'A'} };
 
 	//State input = { {'D', 'I'},{'J', 'K', 'E', 'A', 'H', 'C', 'G'}, {'F', 'B'} };
 	//State goal = { {'A', 'C', 'B'},{'G'},{'K'},{'F', 'H', 'I', 'E', 'J', 'D'} };
 
-	State input({ {'D', 'H', 'B', 'E'},{'G', 'A'},{'I', 'C', 'J', 'F'} });
-	State goal({ {'D', 'C'},{ 'G', 'E' }, {'F', 'B', 'A', 'H' }, {'J', 'I' } });
+	/*State input({ {'D', 'H', 'B', 'E'},{'G', 'A'},{'I', 'C', 'J', 'F'} });
+	State goal({ {'D', 'C'},{ 'G', 'E' }, {'F', 'B', 'A', 'H' }, {'J', 'I' } });*/
 
 	//State input = { {'A', 'B', 'C'},{'D', 'E','F'},{'G', 'H', 'I'}};
 	//State goal = { {'A', 'B', 'C' ,'D', 'E','F' , 'G', 'H', 'I'} };
