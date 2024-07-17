@@ -10,15 +10,33 @@ using namespace std;
 using State = vector<vector<char>>;  // 2D vector to store the stacks of blocks
 using Moves = vector<pair<string, string>>;  // pair of block and its destination
 
+
+class StateSpace {	// we can of course make getters and setters but 
+public:				// not worth it in the context of a test task
+    State state;
+    Moves move;
+    int fixedCount;	// how close you are to the goal
+    int heuristic;   // heuristic value to guide the search
+
+    StateSpace(State s) : state(s), move({}), fixedCount(0) {}
+    StateSpace(State s, Moves m) : state(s), move(m), fixedCount(0), heuristic(0) {}
+    StateSpace(State s, Moves m, int f, int h) : state(s), move(m), fixedCount(f), heuristic(h) {}
+
+    // for the priority queue comparison
+    bool operator<(const StateSpace& other) const {
+        return (fixedCount + heuristic) < (other.fixedCount + other.heuristic);
+    }
+};
+
 // Function to convert the state to a string representation for easy comparison
 string toString(const State& state) {
-    stringstream ss;
-    for (const auto& stack : state) {
-        for (char block : stack)
-            ss << block;
-        ss << "/";
+    string wholeState;
+    for (const auto& stack : state) {  // loop on the stacks, avoid copying the stack + not changing it
+        for (char block : stack)  // loop on the blocks
+            wholeState += block;
+        wholeState += "/";  // separate the stacks from each other
     }
-    return ss.str();
+    return wholeState;
 }
 
 // Function to check if the current state matches the goal state
@@ -62,6 +80,29 @@ vector<pair<State, Moves>> getNextStates(const State& current, const Moves& path
     return nextStates;
 }
 
+// Function to fix all the elements that reach their goal pos and update state's fixedCount attribute
+void fixMatches(State& current, const State& goal) {
+    // check if any of the tables (elements on table) are in the right place
+    for (auto& curStack : current)	// without const as we are overriding the DONE elements
+        if (!curStack.empty())
+            for (const auto& goalStack : goal)
+                if (curStack.front() == goalStack.front())
+                {
+                    curStack[0] = '-';	// marking the matched element that it is fixed and not to be moved
+                    //++current.fixedCount;
+                    int counter = 0;	// to iterate over the rest of the stack
+                    while (curStack[counter] == '-' && counter < curStack.size() - 1)	// extend the checking to the elements above
+                    {
+                        ++counter;
+                        if (curStack[counter] == goalStack[counter])
+                        {
+                            curStack[counter] = '-';	// mark done
+                            //++current.fixedCount;
+                        }
+                    }
+                }
+}
+
 // BFS algorithm to find the optimal path to reach the goal state
 vector<pair<string, string>> BFS_Algorithm(const State& start, const State& goal) {
     Moves path;
@@ -71,14 +112,21 @@ vector<pair<string, string>> BFS_Algorithm(const State& start, const State& goal
     BFSq.push({ start, {} });
     visited.insert(toString(start));
 
+    int count = 0, count2 = 0;
     while (!BFSq.empty()) {
         State currentState = BFSq.front().first;
         path = BFSq.front().second;
         BFSq.pop();
 
-        if (IsGoal(currentState, goal)) {
-            return path;
-        }
+        if (IsGoal(currentState, goal))   return path;
+        //fixMatches(currentState, goal);
+
+        ++count; count2 = 0;
+        cout << "\n visited " << count << " : " << toString(currentState);
+        for (auto stack : currentState)
+            for (auto block : stack)
+                (block == '-') ? ++count2 : count2;
+        cout << "\t\t fixed: " << count2;
 
         vector<pair<State, Moves>> nextStates = getNextStates(currentState, path);
 
@@ -111,7 +159,7 @@ int main() {
     vector<pair<string, string>> path;
     path = BFS_Algorithm(input, goal);
 
-    cout << "The path is: ";
+    cout << "\n\nThe path is: ";
     for (const auto& pathPair : path)
         cout << "(" << pathPair.first << ", " << pathPair.second << ")\n";
 
