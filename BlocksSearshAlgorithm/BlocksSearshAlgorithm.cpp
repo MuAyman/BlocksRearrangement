@@ -68,12 +68,35 @@ vector<pair<State, Moves>> getNextStates(const State& current, const Moves& path
                 }
             }
             // Moving the top block to a new stack (simulating "Table")
-            State newState = current;
-            Moves newPath = path;
-            newState.push_back({ topBlock });
-            newPath.push_back(make_pair(string(1, topBlock), "Table"));
-            newState[i].pop_back();
-            nextStates.push_back(make_pair(newState, newPath));
+            //State newState = current;
+            //Moves newPath = path;
+            //newState.push_back({ topBlock });
+            //newPath.push_back(make_pair(string(1, topBlock), "Table"));
+            //newState[i].pop_back();
+            //nextStates.push_back(make_pair(newState, newPath));
+            // Moving the top block to an existing empty stack
+            bool emptyStackUsed = false;
+            for (int j = 0; j < current.size(); ++j) {
+                if (current[j].empty()) {  // if you found an empty stack already, use it
+                    State newState = current;
+                    Moves newPath = path;
+                    newState[j].push_back({ topBlock }); // push back in the empty stack
+                    newPath.push_back(make_pair(string(1, topBlock), "Table"));
+                    newState[i].pop_back();
+                    nextStates.push_back({ newState, newPath });
+                    emptyStackUsed = true;
+                    break;
+                }
+            }
+            // If no empty stack found, create a new stack
+            if (!emptyStackUsed) {
+                State newState = current;
+                Moves newPath = path;
+                newState.push_back({ topBlock });
+                newPath.push_back(make_pair(string(1, topBlock), "Table"));
+                newState[i].pop_back();
+                nextStates.push_back({ newState, newPath });
+            }
         }
     }
 
@@ -143,8 +166,8 @@ vector<pair<string, string>> BFS_Algorithm(const State& start, const State& goal
 
 int main() {
 
-    State input = { {'C', 'B', 'D'},{'A'} };
-    State goal = { {'D', 'C', 'B', 'A'} };
+  /*  State input = { {'C', 'B', 'D'},{'A'} };
+    State goal = { {'D', 'C', 'B', 'A'} };*/
 
     //State input = { {'D', 'I'},{'J', 'K', 'E', 'A', 'H', 'C', 'G'}, {'F', 'B'} };
     //State goal = { {'A', 'C', 'B'},{'G'},{'K'},{'F', 'H', 'I', 'E', 'J', 'D'} };
@@ -152,8 +175,8 @@ int main() {
   /*  State input({ {'D', 'H', 'B', 'E'},{'G', 'A'},{'I', 'C', 'J', 'F'} });
     State goal({ {'D', 'C'},{ 'G', 'E' }, {'F', 'B', 'A', 'H' }, {'J', 'I' } });*/
 
-    //State input = { {'A', 'B', 'C'},{'D', 'E','F'},{'G', 'H', 'I'}};
-    //State goal = { {'A', 'B', 'C' ,'D', 'E','F' , 'G', 'H', 'I'} };
+    State input = { {'A', 'B', 'C'},{'D', 'E','F'},{'G', 'H', 'I'}};
+    State goal = { {'A', 'B', 'C' ,'D', 'E','F' , 'G', 'H', 'I'} };
 
 
     vector<pair<string, string>> path;
