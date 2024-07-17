@@ -166,8 +166,8 @@ vector<pair<string, string>> BFS_Algorithm(const State& start, const State& goal
 
 int main() {
 
-  /*  State input = { {'C', 'B', 'D'},{'A'} };
-    State goal = { {'D', 'C', 'B', 'A'} };*/
+    State input = { {'P','D', 'A', 'C','B'}};
+    State goal = { {'D', 'C', 'B'},{'A', 'P'} };
 
     //State input = { {'D', 'I'},{'J', 'K', 'E', 'A', 'H', 'C', 'G'}, {'F', 'B'} };
     //State goal = { {'A', 'C', 'B'},{'G'},{'K'},{'F', 'H', 'I', 'E', 'J', 'D'} };
@@ -175,8 +175,8 @@ int main() {
   /*  State input({ {'D', 'H', 'B', 'E'},{'G', 'A'},{'I', 'C', 'J', 'F'} });
     State goal({ {'D', 'C'},{ 'G', 'E' }, {'F', 'B', 'A', 'H' }, {'J', 'I' } });*/
 
-    State input = { {'A', 'B', 'C'},{'D', 'E','F'},{'G', 'H', 'I'}};
-    State goal = { {'A', 'B', 'C' ,'D', 'E','F' , 'G', 'H', 'I'} };
+    //State input = { {'A', 'B', 'C'},{'D', 'E','F'},{'G', 'H', 'I'}};
+    //State goal = { {'A', 'B', 'C' ,'D', 'E','F' , 'G', 'H', 'I'} };
 
 
     vector<pair<string, string>> path;
