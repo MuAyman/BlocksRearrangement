@@ -8,17 +8,14 @@
 using namespace std;
 
 
-/* ===================================== */
-/*   ============ TO DO =============
-* Add the functions to the class
+struct Block {
+	char letter;
+	bool isgoal;
 
+	Block(char let) : letter(let), isgoal(0) {};
+};
 
-
-										 */
-										 /* ===================================== */
-
-
-using State = vector<vector<char>>;  // 2D vector to store the stacks of blocks
+using State = vector<vector<Block>>;  // 2D vector to store the stacks of blocks
 using Moves = vector<pair<string, string>>;  // pair of block and its destination
 
 class StateSpace {	// we can of course make getters and setters but 
@@ -26,209 +23,234 @@ public:				// not worth it in the context of a test task
 	State state;
 	Moves move;
 	int fixedCount;	// how close you are to the goal
-	int heuristic;   // heuristic value to guide the search
 
+	StateSpace() : state({}), move({}), fixedCount(0) {}
 	StateSpace(State s) : state(s), move({}), fixedCount(0) {}
-	StateSpace(State s, Moves m) : state(s), move(m), fixedCount(0), heuristic(0) {}
-	StateSpace(State s, Moves m, int f, int h) : state(s), move(m), fixedCount(f), heuristic(h) {}
+	StateSpace(State s, Moves m) : state(s), move(m), fixedCount(0) {}
+	StateSpace(State s, Moves m, int f) : state(s), move(m), fixedCount(f) {}
 
 	// for the priority queue comparison
 	bool operator<(const StateSpace& other) const {
-		return (fixedCount + heuristic) < (other.fixedCount + other.heuristic);
+		return (fixedCount) < (other.fixedCount);
 	}
 };
-
 
 // Function to convert the state to a string representation for easy comparison
 string toString(const State& state) {
 	string wholeState;
 	for (const auto& stack : state) {  // loop on the stacks, avoid copying the stack + not changing it
-		for (char block : stack)  // loop on the blocks
-			wholeState += block;
+		for (auto block : stack)  // loop on the blocks
+			wholeState += block.letter;
 		wholeState += "/";  // separate the stacks from each other
 	}
 	return wholeState;
 }
 
 // Function to check if the current state matches the goal state
-bool IsGoal(const StateSpace& current) {
-	int totalElementsNum = 0;
-	for (const auto& stack : current.state)
-		totalElementsNum += stack.size();
-	if (totalElementsNum == current.fixedCount) return true;
+bool IsGoal(const State& current, const State& goal) {
+	int flag = 0, totalBloacksNum = 0;   // to count the num of similar stacks
+	for (const auto& curStack : current)
+	{
+		totalBloacksNum += curStack.size(); // counting the total num of blocks
+		for (const auto& block : curStack)
+		{
+			if (block.isgoal)   // conting the num of block in goal pos
+				++flag;
+		}
+	}
+
+	if (flag == totalBloacksNum)    return true;    // goal reached if all block are in goal pos
 	else return false;
 }
 
-// Heuristic function to estimate the distance to the goal state
-int calculateHeuristic(const State& current, const State& goal) {
-	int heuristic = 0;
-	for (int i = 0; i < goal.size(); ++i) {
-		if (i < current.size()) {
-			for (int j = 0; j < goal[i].size(); ++j) {
-				if (j < current[i].size() && current[i][j] != goal[i][j]) {
-					++heuristic;
-				}
-				else if (j >= current[i].size()) {
-					++heuristic;
+// function to generate the next possible states from the current state
+vector<StateSpace> getNextStates(const StateSpace& current) {
+	vector<StateSpace> nextStates;
+
+	for (int i = 0; i < current.state.size(); ++i) {
+		if (!current.state[i].empty()) {  // Current stack not empty
+			Block topBlock = current.state[i].back();
+
+			// moving the top block of one stack to another stack
+			for (int j = 0; j < current.state.size(); ++j) {
+				if (i != j) {	// check that its a different stack
+					State newState = current.state;
+					int newFixed = current.fixedCount;
+					Moves newPath = current.move;
+					newPath.push_back(make_pair(string(1, topBlock.letter), current.state[j].empty() ? "Table" : string(1, current.state[j].back().letter)));
+					newState[j].push_back(topBlock);
+					newState[i].pop_back();
+					nextStates.push_back({ newState, newPath, newFixed });
 				}
 			}
-		}
-		else {
-			heuristic += goal[i].size();
-		}
-	}
-	return heuristic;
-}
-
-// Function to generate the next possible states from the current state
-vector<StateSpace> getNextStates(const StateSpace& current, const State& goal) {
-	vector<StateSpace> nextStates;
-	for (int i = 0; i < current.state.size(); ++i) {
-		if (!current.state[i].empty()) {  // current stack not empty
-			//if (current.state[i].back() != '-') {  // skipping the marked done
-				char topBlock = current.state[i].back();
-				for (int j = 0; j < current.state.size(); ++j) {
-					if (i != j) {  // here we are moving the block from i to j
-						if (current.state[i].size() == 1 && current.state[j].size() == 0)  // don't move a block from table to table again
-							continue;
-						State newState = current.state;
-						Moves newPath = current.move;
-						newPath.push_back(make_pair(string(1, topBlock), current.state[j].empty() ? "Table" : string(1, current.state[j].back())));
-						newState[j].push_back(topBlock);
-						newState[i].pop_back();
-						//nextStates.push_back({ newState, newPath });
-						int newFixedCount = current.fixedCount;
-						int newHeuristic = calculateHeuristic(newState, goal);
-						nextStates.push_back({ newState, newPath, newFixedCount, newHeuristic });
-					}
-				}
-				// Moving the top block to an existing empty stack
-				bool emptyStackUsed = false;
-				for (int j = 0; j < current.state.size(); ++j) {
-					if (current.state[j].empty()) {  // if you found an empty stack already, use it
-						State newState = current.state;
-						Moves newPath = current.move;
-						newState[j].push_back({ topBlock }); // push back in the empty stack
-						newPath.push_back(make_pair(string(1, topBlock), "Table"));
-						newState[i].pop_back();
-						int newFixedCount = current.fixedCount;
-						int newHeuristic = calculateHeuristic(newState, goal);
-						nextStates.push_back({ newState, newPath, newFixedCount, newHeuristic });
-						emptyStackUsed = true;
-						break;
-					}
-				}
-				// If no empty stack found, create a new stack
-				if (!emptyStackUsed) {
+			// moving the top block to an existing empty stack before adding new stack 
+			bool emptyStackUsed = false;
+			for (int j = 0; j < current.state.size(); ++j) {
+				if (current.state[j].empty()) {  // if you found an empty stack already, use it
 					State newState = current.state;
+					int newFixed = current.fixedCount;
 					Moves newPath = current.move;
-					newState.push_back({ topBlock });
-					newPath.push_back(make_pair(string(1, topBlock), "Table"));
+					newState[j].push_back({ topBlock }); // push back in the empty stack
+					newPath.push_back(make_pair(string(1, topBlock.letter), "Table"));
 					newState[i].pop_back();
-					int newFixedCount = current.fixedCount;
-					int newHeuristic = calculateHeuristic(newState, goal);
-					nextStates.push_back({ newState, newPath, newFixedCount, newHeuristic });
+					nextStates.push_back({ newState, newPath, newFixed });
+					emptyStackUsed = true;
+					break;
 				}
-			//}
+			}
+			// if no empty stack found, create a new stack
+			if (!emptyStackUsed) {
+				State newState = current.state;
+				int newFixed = current.fixedCount;
+				Moves newPath = current.move;
+				newState.push_back({ topBlock });
+				newPath.push_back(make_pair(string(1, topBlock.letter), "Table"));
+				newState[i].pop_back();
+				nextStates.push_back({ newState, newPath, newFixed });
+			}
 		}
 	}
 	return nextStates;
 }
 
-// Function to fix all the elements that reach their goal pos and update state's fixedCount attribute
-void fixMatches(StateSpace& current, const StateSpace& goal) {
-
-	State inner = current.state;
-	// check if any of the tables (elements on table) are in the right place
-	for (auto& curStack : inner)	// without const as we are overriding the DONE elements
+// function to fix all the blocks that reach their goal pos and update state's fixedCount attribute
+void countMatches(StateSpace& current, const State& goal) {
+	current.fixedCount = 0; // insuring it hasnt been counted before so that we double the count
+	// check if any of the tables (blocks on table) are in the right place
+	for (auto& curStack : current.state)	// without const as we are marking the DONE blocks
 		if (!curStack.empty())
-			for (const auto& goalStack : goal.state)
-				if (curStack.front() == goalStack.front())
+			for (const auto& goalStack : goal)
+				if (curStack.front().letter == goalStack.front().letter)
 				{
-					curStack[0] = '-';	// marking the matched element that it is fixed and not to be moved
+					curStack[0].isgoal = true;  // marking the matched element that it is fixed and not to be moved
 					++current.fixedCount;
 					int counter = 0;	// to iterate over the rest of the stack
-					while (curStack[counter] == '-' && counter < curStack.size() - 1)	// extend the checking to the elements above
-					{
+					while (curStack[counter].isgoal && counter < curStack.size() - 1 && counter < goalStack.size() - 1)	// extend the checking to the elements above
+					{ // making sure that the counter doesnt go beyond the current or goal stacks
 						++counter;
-						if (counter < goalStack.size())
-							if (curStack[counter] == goalStack[counter])
-							{
-								curStack[counter] = '-';	// mark done
-								++current.fixedCount;
-							}
+						if (curStack[counter].letter == goalStack[counter].letter)
+						{
+							curStack[counter].isgoal = true;	// mark done
+							++current.fixedCount;
+						}
 					}
 				}
 }
 
 // BFS algorithm to find the optimal path to reach the goal state
-Moves BFS_Algorithm(const StateSpace& start, const StateSpace& goal) {
+Moves BFS_Algorithm(const State& start, const State& goal) {
 	//Moves path;
-	queue<StateSpace> BFSq;
-	unordered_set<string> visited;
+	priority_queue<StateSpace> BFSq;    // priority queue to prioritize the states nearer to the goal
+	unordered_set<string> visited;  // unordered map to enhance the efficacy of the searching in it every iteration
 
 	BFSq.push(start);
-	//visited.insert(toString(start.state));
-	int fixedCount = 0;	// for the priority queue
-	//static int maxFixedCount = 0;	// to store the nearest to goal we reached and disregard the others
-	int count = 0, count2 = 0;
+	visited.insert(toString(start));    // store the visited states as a string for ease of access and comparison
+
 	while (!BFSq.empty()) {
-		StateSpace current = BFSq.front();
-		//path = BFSq.top().move;
+
+		StateSpace current = BFSq.top();
 		BFSq.pop();
+		if (IsGoal(current.state, goal))
+			return current.move;
 
-		if (IsGoal(current))	return current.move;
-		fixMatches(current, goal);
+		countMatches(current, goal);    // count the num of blocks in goal pos to use in the priority queue
+		visited.insert(toString(current.state));    // update the visited states
 
-		++count; count2 = 0;
-		cout << "\n visited " << count << " : " << toString(current.state);
-		//for (auto stack : current.state)
-		//	for (auto block : stack)
-				//(block == '-') ? ++count2 : count2;
-		cout << "\t\t fixed: " << current.fixedCount;
+		vector<StateSpace> nextStates = getNextStates(current);     // getting the next possible states from the current one to discover
 
-
-		string currentString = toString(current.state);
-		if (visited.find(currentString) == visited.end()) {
-			visited.insert(currentString);
-
-			vector<StateSpace> nextStates = getNextStates(current, goal.state);
-
-			for (auto& nextState : nextStates) {
-				string stateString = toString(nextState.state);
-				if (visited.find(stateString) == visited.end()) {
-					fixMatches(nextState, goal);
-					BFSq.push(nextState);
-				}
+		for (auto& nextState : nextStates)  // looping on them to check if visited before and count the matches
+		{
+			string stateString = toString(nextState.state);
+			if (visited.find(stateString) == visited.end()) {   // check if visited before
+				countMatches(nextState, goal);
+				BFSq.push(nextState);
 			}
 		}
 	}
 	return {}; // return empty path if no path is found
 }
 
+void  compare(State in, State goal, State sol) {
+
+	vector<pair<string, string>> path = BFS_Algorithm(in, goal);
+
+	cout << "\n\tmy sol moves: " << path.size() << "\n\t  Test moves: " << sol.size() << "\n";
+}
+
+
 int main() {
 
-	State input = { {'C', 'B', 'D'},{'A'} };
-	State goal = { {'D', 'C', 'B', 'A'} };
-
-	//State input = { {'D', 'I'},{'J', 'K', 'E', 'A', 'H', 'C', 'G'}, {'F', 'B'} };
-	//State goal = { {'A', 'C', 'B'},{'G'},{'K'},{'F', 'H', 'I', 'E', 'J', 'D'} };
-
-	/*State input({ {'D', 'H', 'B', 'E'},{'G', 'A'},{'I', 'C', 'J', 'F'} });
-	State goal({ {'D', 'C'},{ 'G', 'E' }, {'F', 'B', 'A', 'H' }, {'J', 'I' } });*/
-
-	//State input = { {'A', 'B', 'C'},{'D', 'E','F'},{'G', 'H', 'I'}};
-	//State goal = { {'A', 'B', 'C' ,'D', 'E','F' , 'G', 'H', 'I'} };
-
-	Moves path;
-	int heuristic = calculateHeuristic(input, goal);
-	StateSpace startState(input, {}, 0, heuristic);
-	path = BFS_Algorithm(startState, goal);
+		State input11 = { {'A', 'B', 'C'}, {'D', 'E'} };
+	State goal11 = { {'D', 'E', 'A', 'B', 'C'} };
+	State sol11 = { {'C', '-'}, {'B', '-'}, {'A', 'E'}, {'B', 'A'}, {'C', 'B'} };
+	compare(input11, goal11, sol11);
 
 
-	cout << "The path is: ";
-	for (const auto& pathPair : path)
-		cout << "(" << pathPair.first << ", " << pathPair.second << ")\n";
+	//State input1 = { {'A', 'B', 'C'}, {'D', 'E'} };
+	//State goal1 = { {'A', 'C'}, {'D', 'E', 'B'} };
+	//State sol1 = { {'C', '-'}, {'B', 'E'}, {'C', 'A'} };
+	//compare(input1, goal1, sol1);
 
-	return 0;
+	//State input2 = { {'D', 'H', 'B', 'E'}, {'G', 'A'}, {'I', 'C', 'J', 'F'} };
+	//State goal2 = { {'D', 'C'}, {'G', 'E'}, {'F', 'B', 'A', 'H'}, {'J', 'I'} };
+	//State sol2 = { {'A', '-'}, {'E', 'G'}, {'F', '-'}, {'B', 'F'}, {'A', 'B'}, {'H', 'A'}, {'J', '-'}, {'C', 'D'}, {'I', 'J'} };
+	//compare(input2, goal2, sol2);
+
+	//State input3 = { {'E', 'N', 'H', 'O'}, {'L', 'F', 'K', 'B'}, {'M', 'C'}, {'A', 'I', 'J'}, {'G', 'D'} };
+	//State goal3 = { {'O', 'A', 'K', 'D', 'J', 'N'}, {'I'}, {'F', 'H', 'C'}, {'E', 'L', 'M'}, {'G', 'B'} };
+	//State sol3 = { {'J', '-'}, {'I', '-'}, {'O', '-'}, {'A', 'O'}, {'B', '-'}, {'K', 'A'}, {'D', 'K'}, {'B', 'G'}, {'J', 'D'}, {'H', '-'}, {'N', 'J'}, {'F', '-'}, {'L', 'E'}, {'H', 'F'}, {'C', 'H'}, {'M', 'L'} };
+	//compare(input3, goal3, sol3);
+
+	//State input4 = { {'D', 'I'}, {'J', 'K', 'E', 'A', 'H', 'C', 'G'}, {'F', 'B'} };
+	//State goal4 = { {'A', 'C', 'B'}, {'G'}, {'K'}, {'F', 'H', 'I', 'E', 'J', 'D'} };
+	//State sol4 = { {'G', '-'}, {'I', '-'}, {'C', 'D'}, {'B', 'C'}, {'H', 'F'}, {'I', 'H'}, {'A', '-'}, {'E', 'I'}, {'K', '-'}, {'J', 'E'}, {'B', '-'}, {'C', 'A'}, {'D', 'J'}, {'B', 'C'} };
+	//compare(input4, goal4, sol4);
+
+	//State input5 = { {'D', 'G', 'C', 'P', 'J', 'O', 'I', 'H'}, {'A', 'Q', 'M', 'K'}, {'L', 'F'}, {'B', 'N', 'E'} };
+	//State goal5 = { {'H', 'B'}, {'E', 'P', 'D', 'K'}, {'O', 'Q', 'G'}, {'N', 'M', 'C'}, {'F', 'I', 'J'}, {'L', 'A'} };
+	//State sol5 = { {'H', '-'}, {'F', '-'}, {'I', 'F'}, {'O', '-'}, {'J', 'I'}, {'E', '-'}, {'P', 'E'}, {'N', '-'}, {'B', 'H'}, {'K', '-'}, {'M', 'N'}, {'C', 'M'}, {'G', 'Q'}, {'D', 'P'}, {'K', 'D'}, {'G', '-'}, {'Q', 'O'}, {'A', 'L'}, {'G', 'Q'} };
+	//compare(input5, goal5, sol5);
+
+	//State input6 = { {'F', 'B', 'C'}, {'H', 'I'}, {'M', 'E', 'J'}, {'L', 'D', 'A', 'G', 'K'} };
+	//State goal6 = { {'D', 'H', 'J', 'E', 'C'}, {'L'}, {'G', 'B', 'M'}, {'I', 'A', 'F'}, {'K'} };
+	//State sol6 = { {'K', '-'}, {'C', '-'}, {'G', '-'}, {'B', 'G'}, {'A', '-'}, {'D', '-'}, {'I', '-'}, {'H', 'D'}, {'J', 'H'}, {'E', 'J'}, {'M', 'B'}, {'C', 'E'}, {'A', 'I'}, {'F', 'A'} };
+	//compare(input6, goal6, sol6);
+
+	//State input7 = { {'J', 'B', 'A', 'E', 'O', 'N'}, {'I', 'G', 'K', 'P', 'Q', 'D', 'L', 'H'}, {'F'}, {'M', 'C'} };
+	//State goal7 = { {'O', 'E', 'H', 'L'}, {'A'}, {'M', 'I', 'F'}, {'B', 'K', 'G', 'N'}, {'P'}, {'J', 'Q', 'D'}, {'C'} };
+	//State sol7 = { {'C', '-'}, {'N', '-'}, {'O', '-'}, {'E', 'O'}, {'A', '-'}, {'H', 'E'}, {'L', 'H'}, {'B', '-'}, {'D', '-'}, {'Q', 'J'}, {'D', 'Q'}, {'P', '-'}, {'K', 'B'}, {'G', 'K'}, {'N', 'G'}, {'I', 'M'}, {'F', 'I'} };
+	//compare(input7, goal7, sol7);
+
+	//State input8 = { {'O', 'B', 'D'}, {'F', 'Q', 'I', 'P', 'A'}, {'C', 'E', 'M', 'G'}, {'R', 'N', 'L'}, {'H', 'J'}, {'K'} };
+	//State goal8 = { {'M', 'G', 'I', 'O'}, {'J', 'L', 'P'}, {'H', 'Q', 'D', 'E', 'C', 'B'}, {'N', 'K'}, {'R', 'A', 'F'} };
+	//State sol8 = { {'J', '-'}, {'L', 'J'}, {'A', '-'}, {'P', 'L'}, {'I', '-'}, {'Q', 'H'}, {'D', 'Q'}, {'N', '-'}, {'K', 'N'}, {'A', 'R'}, {'F', 'A'}, {'G', '-'}, {'M', '-'}, {'E', 'D'}, {'C', 'E'}, {'B', 'C'}, {'G', 'M'}, {'I', 'G'}, {'O', 'I'} };
+	//compare(input8, goal8, sol8);
+
+	//State input9 = { {'C', 'B', 'F', 'O', 'D'}, {'I', 'L', 'H', 'G', 'P', 'K', 'N'}, {'J', 'E'}, {'A', 'M'} };
+	//State goal9 = { {'A', 'K'}, {'C', 'G', 'F', 'O'}, {'D', 'H', 'J'}, {'B', 'I'}, {'M', 'P'}, {'E', 'L'}, {'N'} };
+	//State sol9 = { {'N', '-'}, {'M', '-'}, {'K', 'A'}, {'P', 'M'}, {'D', '-'}, {'G', '-'}, {'H', 'D'}, {'E', '-'}, {'L', 'E'}, {'J', 'H'}, {'O', '-'}, {'F', '-'}, {'O', 'F'}, {'B', '-'}, {'I', 'B'}, {'G', 'C'}, {'O', '-'}, {'F', 'G'}, {'O', 'F'} };
+	//compare(input9, goal9, sol9);
+
+	//State input10 = { {'J', 'H', 'I', 'D', 'O', 'P', 'B', 'F', 'G', 'C', 'E', 'K', 'A'}, {'Q', 'L'}, {'N', 'M'} };
+	//State goal10 = { {'P', 'N', 'H', 'C'}, {'O', 'K', 'Q', 'J', 'D', 'B', 'I'}, {'M', 'E', 'A'}, {'G', 'L'}, {'F'} };
+	//State sol10 = { {'A', '-'}, {'K', '-'}, {'M', '-'}, {'E', 'M'}, {'A', 'E'}, {'C', '-'}, {'G', '-'}, {'L', 'G'}, {'F', '-'}, {'B', '-'}, {'P', '-'}, {'N', 'P'}, {'O', '-'}, {'K', 'O'}, {'Q', 'K'}, {'D', '-'}, {'I', '-'}, {'H', 'N'}, {'C', 'H'}, {'J', 'Q'}, {'D', 'J'}, {'B', 'D'}, {'I', 'B'} };
+	//compare(input10, goal10, sol10);
+
+	//State input11 = { {'A', 'B', 'C'}, {'D', 'E'} };
+	//State goal11 = { {'D', 'E', 'A', 'B', 'C'} };
+	//State sol11 = { {'C', '-'}, {'B', '-'}, {'A', 'E'}, {'B', 'A'}, {'C', 'B'} };
+	//compare(input11, goal11, sol11);
+
+	//State input12 = { {'A', 'B', 'C'}, {'D', 'E', 'F'}, {'G', 'H', 'I'} };
+	//State goal12 = { {'I', 'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A'} };
+	//State sol12 = { {'I', '-'}, {'H', 'I'}, {'G', 'H'}, {'F', 'G'}, {'E', 'F'}, {'D', 'E'}, {'C', 'D'}, {'B', 'C'}, {'A', 'B'} };
+	//compare(input12, goal12, sol12);
+
+	//State input13 = { {'A', 'B', 'C'}, {'D', 'E', 'F'}, {'G', 'H', 'I'} };
+	//State goal13 = { {'F', 'D', 'C', 'I', 'G', 'A'}, {'B', 'E', 'H'} };
+	//State sol13 = { {'F', '-'}, {'E', '-'}, {'D', 'F'}, {'C', 'D'}, {'I', 'C'}, {'B', '-'}, {'E', 'B'}, {'H', '-'}, {'H', 'E'}, {'G', 'I'}, {'A', 'G'} };
+	//compare(input13, goal13, sol13);
+
+
+		return 0;
 }
