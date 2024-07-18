@@ -147,43 +147,15 @@ Moves BFS_Algorithm(const State& start, const State& goal) {
 	BFSq.push(start);
 	visited.insert(toString(start));    // store the visited states as a string for ease of access and comparison
 
-	vector<StateSpace> sol;     // for debugging purposes = DELETE 
-	int solflag = 0;    // for debugging purposes = DELETE 
-
-	int count = 0;      // for debugging purposes = DELETE 
 	while (!BFSq.empty()) {
 
 		StateSpace current = BFSq.top();
 		BFSq.pop();
 		if (IsGoal(current.state, goal))
-		{
-			// return current.move;
-
-			  // fro debugging purposes
-			sol.push_back(current);
-			++solflag;
-			if (solflag == 1000)
-			{
-				StateSpace final;
-				final = sol[1];
-				for (auto s = 0; s < sol.size(); ++s)
-					if (final.move.size() > sol[s].move.size())
-						final = sol[s];
-
-				return final.move;
-			}
-		}
+			return current.move;
 
 		countMatches(current, goal);    // count the num of blocks in goal pos to use in the priority queue
 		visited.insert(toString(current.state));    // update the visited states
-
-		// for debugging reasons
-		//++count;
-		//cout << "\n visited " << count << " : " << toString(current.state);
-		////for (auto stack : current.state)
-		//    //for (auto block : stack)
-		//    //    (block == '-') ? ++count2 : count2;
-		//cout << "\t\t fixed: " << current.fixedCount;
 
 		vector<StateSpace> nextStates = getNextStates(current);     // getting the next possible states from the current one to discover
 
