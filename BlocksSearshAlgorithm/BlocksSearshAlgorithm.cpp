@@ -40,7 +40,14 @@ string toString(const State &state)
 		swapped = 0;
 		for (int j = 0; j < s.size() - i - 1; ++j)
 		{
-			if (s[j][0] > s[j + 1][0]) // comparing the tables (elements on the table) and sorting accourrding to them
+			if (s[j + 1].empty()) // moving empty states to the end of the state vector
+				continue;
+			else if (s[j].empty()) // moving empty states to the end of the state vector
+			{
+				swap(s[j], s[j + 1]); // swaping the two stacks of the state vector
+				swapped = 1;
+			}
+			else if (s[j][0] > s[j + 1][0]) // comparing the tables (elements on the table) and sorting accourrding to them
 			{
 				swap(s[j], s[j + 1]); // swaping the two stacks of the state vector
 				swapped = 1;
