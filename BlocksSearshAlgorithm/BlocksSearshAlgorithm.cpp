@@ -4,6 +4,7 @@
 #include <queue>
 #include <unordered_set>
 #include <sstream>
+#include <chrono> // Include this at the top of your file
 
 using namespace std;
 
@@ -181,6 +182,7 @@ void countMatches(StateSpace &current, const State &goal)
 				}
 }
 
+// int counter = 0;
 // BFS algorithm to find the optimal path to reach the goal state
 Moves BFS_Algorithm(const State &start, const State &goal)
 {
@@ -190,14 +192,17 @@ Moves BFS_Algorithm(const State &start, const State &goal)
 
 	BFSq.push(start);
 	visited.insert(toString(start)); // store the visited states as a string for ease of access and comparison
-
+	int counter = 0;
 	while (!BFSq.empty())
 	{
-
+		++counter;
 		StateSpace current = BFSq.top();
 		BFSq.pop();
 		if (IsGoal(current.state, goal))
+		{
+			counter;
 			return current.move;
+		}
 
 		countMatches(current, goal);			 // count the num of blocks in goal pos to use in the priority queue
 		visited.insert(toString(current.state)); // update the visited states
@@ -219,10 +224,18 @@ Moves BFS_Algorithm(const State &start, const State &goal)
 
 void compare(State in, State goal, State sol, int n)
 {
-	vector<pair<string, string>> path = BFS_Algorithm(in, goal);
-	cout << "\n\t" << n << ". my sol moves: " << path.size() << "\n\t      Test moves: " << sol.size() << "\n";
-}
+	auto start = chrono::high_resolution_clock::now(); // Capture start time
 
+	vector<pair<string, string>> path = BFS_Algorithm(in, goal);
+
+	auto end = chrono::high_resolution_clock::now(); // Capture end time
+	chrono::duration<double> duration = end - start; // Calculate duration
+
+	cout << "\n========================================\n";
+	cout << "\t" << n << ". my sol moves: " << path.size()
+		<< "\n\t      Test moves: " << sol.size() << "\n";
+	cout << "\t      Time taken: " << duration.count() << " seconds\n"; // Print the duration
+}
 int main()
 {
 
